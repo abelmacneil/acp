@@ -402,3 +402,6 @@
 [       127.0.0.1 @ Wed Feb 19 11:34:40 2014](grab:net.tgz         => 42740 bytes)
 [       127.0.0.1 @ Wed Feb 19 11:34:51 2014](  ll:(null)          =>   0 bytes)
 [       127.0.0.1 @ Wed Feb 19 15:52:38 2014](  ll:(null)          =>   0 bytes)
+[       127.0.0.1 @ Wed Feb 19 16:08:59 2014](send:new.txt         =>   8 bytes)
+[       127.0.0.1 @ Wed Feb 19 16:09:04 2014](  ll:(null)          =>   0 bytes)
+[       127.0.0.1 @ Wed Feb 19 16:09:08 2014](  ls:(null)          =>   0 bytes)
