@@ -148,19 +148,26 @@ int main(int argc, char **argv)
                 perror("server: recv");
                 exit(1);
             }
-            int sum = 0, npackets = 0;
-            FILE *fp = NULL;
-            if (client_argc > 3) {
+            printf("%s ", ipstr);
+            printf("request: '%s", cmdtostr(cmd));
+            if (cmd < COMMAND_LS) {
                 nbytes = recv(newfd, filename, MAXDATASIZE, 0);
                 if (nbytes == -1) {
                     perror("recv");
                     exit(-1);
                 }
+                printf(" %s'\n", filename);
                 strncat(path, filename, MAXDATASIZE);
                 if (access(path, F_OK) == -1) {
                     fprintf(stderr, "File '%s' does not exist.\n", filename);
-                    exit(2);
+                    goto cleanup;
                 }
+            } else {
+                puts("'");
+            }
+            int sum = 0, npackets = 0;
+            FILE *fp = NULL;
+            if (cmd < COMMAND_LS) {
                 if (cmd == COMMAND_SEND) {
                     fp = fopen(path, "wb");
                     handle_ptr(fp, "fopen");
@@ -172,7 +179,7 @@ int main(int argc, char **argv)
                 } 
                 if (fp)
                     fclose(fp);
-            } else if (client_argc > 2) {
+            } else {
                 char cmdstr[MAXDATASIZE];
                 if (cmd == COMMAND_LS) {
                     sprintf(cmdstr, "/bin/ls %s", FILEDIR);
@@ -191,13 +198,10 @@ int main(int argc, char **argv)
                 perror("Error on network");
                 exit(status);
             }
-            printf("%s ", ipstr);
-            printf("request: '%s", cmdtostr(cmd));
-            if (cmd < COMMAND_LS)
-                printf(" %s", filename);
-            puts("'");
             print_results(stdout, cmd, client_argc > 3 ? filename : NULL,
                     sum, npackets, ipstr);
+cleanup:
+            printf("Connection to %s closed.\n", ipstr);
             print_sep(stdout);
             close(newfd);
             exit(0);

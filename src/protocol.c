@@ -36,7 +36,6 @@ void print_results(FILE *fp, int cmd, char *filename,
         fprintf(fp,"Transferred '%s' (%d bytes) in %d packet%s.\n",
                 filename, sum, npackets, npackets == 1 ? "" : "s");
     }
-    fprintf(fp,"Connection to %s closed.\n", ipstr);
 }
 
 void *get_inet_addr(struct sockaddr *sa)

@@ -118,6 +118,7 @@ int main(int argc, char **argv)
     }
     close(sockfd);
     print_results(stdout, cmd, filename, sum, npackets, ipstr);
+    printf("Connection to %s closed.\n", ipstr);
     return 0;
 }
 
