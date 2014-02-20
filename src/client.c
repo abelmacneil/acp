@@ -22,11 +22,11 @@ int main(int argc, char **argv)
 {
     int sockfd;
     struct addrinfo hints, *servinfo, *p;
-    int status;
+    int status, serv_status;
     char ipstr[INET6_ADDRSTRLEN];
     char filename[FILENAME_MAX];
-    int cmd;
     char tmp[MAXDATASIZE];
+    int cmd = COMMAND_INVALID;
 
     if (argc > 2) {
         if (argc > 3) {
@@ -100,6 +100,12 @@ int main(int argc, char **argv)
         perror("send");
         exit(1);
     }
+    recv(sockfd, tmp, MAXDATASIZE, 0);
+    serv_status = atoi(tmp);
+    if (serv_status != 0) {
+        fprintf(stderr, "Error on server: %s\n", serv_errstr(serv_status));
+        goto cleanup;
+    }
     int sum, npackets;
     FILE *fp;
     if (cmd == COMMAND_SEND) {
@@ -114,11 +120,12 @@ int main(int argc, char **argv)
         status = recvtextfile(stdout, sockfd);
     }
     if (status != 0) {
-        fprintf(stderr, "Error on network.\n");
+        fprintf(stderr, "Error on server: %s\n", serv_errstr(status));
     }
-    close(sockfd);
     print_results(stdout, cmd, filename, sum, npackets, ipstr);
+cleanup:
+    close(sockfd);
     printf("Connection to %s closed.\n", ipstr);
-    return 0;
+    return status;
 }
 

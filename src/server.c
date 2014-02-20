@@ -150,21 +150,26 @@ int main(int argc, char **argv)
             }
             printf("%s ", ipstr);
             printf("request: '%s", cmdtostr(cmd));
+            status = SERV_ERROR_OK;
             if (cmd < COMMAND_LS) {
                 nbytes = recv(newfd, filename, MAXDATASIZE, 0);
                 if (nbytes == -1) {
                     perror("recv");
-                    exit(-1);
+                    goto cleanup;
                 }
                 printf(" %s'\n", filename);
                 strncat(path, filename, MAXDATASIZE);
                 if (access(path, F_OK) == -1) {
                     fprintf(stderr, "File '%s' does not exist.\n", filename);
-                    goto cleanup;
+                    status = SERV_ERROR_NOFILE;
                 }
             } else {
                 puts("'");
             }
+            sprintf(tmp, "%d", status);
+            send(newfd, tmp, MAXDATASIZE,0);
+            if (status != 0)
+                goto cleanup;
             int sum = 0, npackets = 0;
             FILE *fp = NULL;
             if (cmd < COMMAND_LS) {

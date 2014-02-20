@@ -16,15 +16,19 @@
 #define MAXDATASIZE 512 // max number of bytes we can get at once 
 #define BACKLOG 10
 
-#define COMMAND_INVALID -1
-#define COMMAND_SEND     1
-#define COMMAND_GRAB     2
-#define COMMAND_LS       30
-#define COMMAND_LL       40
+#define COMMAND_INVALID 0
+#define COMMAND_SEND    1
+#define COMMAND_GRAB    2
+#define COMMAND_LS      30
+#define COMMAND_LL      40
 
+#define SERV_ERROR_OK        0
+#define SERV_ERROR_NOFILE   1
 
 
 char *cmdtostr(int cmd);
+
+char *serv_errstr(int status);
 
 void print_results(FILE *fp, int cmd, char *filename, int sum, int npackets, char *ipstr);
 

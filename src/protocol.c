@@ -28,6 +28,14 @@ char *cmdtostr(int cmd)
     return "";
 }
 
+char *serv_errstr(int status)
+{
+    switch (status) {
+        case SERV_ERROR_OK:         return "No error.";
+        case SERV_ERROR_NOFILE:     return "File does not exist.";
+    }
+    return "";
+}
 void print_results(FILE *fp, int cmd, char *filename, 
         int sum, int npackets, char *ipstr)
 {
