@@ -12,7 +12,10 @@
 
 #include <arpa/inet.h>
 
-
+void newfunct()
+{
+    printf("Stuff.\n");
+}
 
 
 int main(int argc, char **argv)
@@ -40,8 +43,13 @@ int main(int argc, char **argv)
         }
     } else
         return 1;
-    if (argc > 3)
+    if (argc > 3) {
+        if (access(argv[3], F_OK) == -1) {
+            fprintf(stderr, "File '%s' does not exist.\n", argv[3]);
+            return 2;
+        }
         strncpy(filename ,argv[3], sizeof filename);
+    }
 
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
