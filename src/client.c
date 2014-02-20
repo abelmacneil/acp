@@ -29,11 +29,18 @@ int main(int argc, char **argv)
     char tmp[MAXDATASIZE];
 
     if (argc > 2) {
-        if (strncmp(argv[2], "send", MAXDATASIZE) == 0) 
-            cmd = COMMAND_SEND;
-        else if (strncmp(argv[2], "grab", MAXDATASIZE) == 0) 
-            cmd = COMMAND_GRAB;
-        else if (strncmp(argv[2], "ls", MAXDATASIZE) == 0) 
+        if (argc > 3) {
+            if (strncmp(argv[2], "send", MAXDATASIZE) == 0)  {
+                cmd = COMMAND_SEND;
+                if (access(argv[3], F_OK) == -1) {
+                    fprintf(stderr, "File '%s' does not exist.\n", argv[3]);
+                    return 2;
+                }
+            } else if (strncmp(argv[2], "grab", MAXDATASIZE) == 0) {
+                cmd = COMMAND_GRAB;
+            }
+            strncpy(filename ,argv[3], sizeof filename);
+        } else if (strncmp(argv[2], "ls", MAXDATASIZE) == 0) 
             cmd = COMMAND_LS;
         else if (strncmp(argv[2], "ll", MAXDATASIZE) == 0) 
             cmd = COMMAND_LL;
@@ -43,13 +50,6 @@ int main(int argc, char **argv)
         }
     } else
         return 1;
-    if (argc > 3) {
-        if (access(argv[3], F_OK) == -1) {
-            fprintf(stderr, "File '%s' does not exist.\n", argv[3]);
-            return 2;
-        }
-        strncpy(filename ,argv[3], sizeof filename);
-    }
 
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;

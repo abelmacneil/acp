@@ -157,6 +157,10 @@ int main(int argc, char **argv)
                     exit(-1);
                 }
                 strncat(path, filename, MAXDATASIZE);
+                if (access(path, F_OK) == -1) {
+                    fprintf(stderr, "File '%s' does not exist.\n", filename);
+                    exit(2);
+                }
                 if (cmd == COMMAND_SEND) {
                     fp = fopen(path, "wb");
                     handle_ptr(fp, "fopen");
