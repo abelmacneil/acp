@@ -141,7 +141,8 @@ int main(int argc, char **argv)
             close(sockfd);
             char path[MAXDATASIZE] = FILEDIR;
             int client_argc;
-            recv(newfd, &client_argc, MAXDATASIZE, 0);
+            nbytes = recv(newfd, tmp, MAXDATASIZE, 0);
+            client_argc = atoi(tmp);
             nbytes = recv(newfd, tmp, MAXDATASIZE, 0);
             cmd = atoi(tmp);
             if (nbytes == -1) {
@@ -159,7 +160,7 @@ int main(int argc, char **argv)
                 }
                 printf(" %s'\n", filename);
                 strncat(path, filename, MAXDATASIZE);
-                if (access(path, F_OK) == -1) {
+                if (cmd == COMMAND_GRAB && access(path, F_OK) == -1) {
                     fprintf(stderr, "File '%s' does not exist.\n", filename);
                     status = SERV_ERROR_NOFILE;
                 }
@@ -198,12 +199,12 @@ int main(int argc, char **argv)
                     pclose(fp);
             }
             status = log_results(ipstr, cmd, 
-                    client_argc > 3 ? filename : NULL, sum);
+                    cmd < COMMAND_LS ? filename : NULL, sum);
             if (status != 0) {
                 perror("Error on network");
                 exit(status);
             }
-            print_results(stdout, cmd, client_argc > 3 ? filename : NULL,
+            print_results(stdout, cmd, cmd < COMMAND_LS ? filename : NULL,
                     sum, npackets, ipstr);
 cleanup:
             printf("Connection to %s closed.\n", ipstr);

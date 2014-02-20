@@ -81,6 +81,24 @@ size_t filelen(FILE *fp)
     return size;
 }
 
+int sendall(int sockfd, char *data, int len)
+{
+    int total = 0;
+    int bytes_left = len;
+    int n;
+
+    while (total < len) {
+        n = send(sockfd, data + total, bytes_left, 0);
+        if (n == -1)
+            break;
+        total += n;
+        bytes_left -= n;
+    }
+    if (len != total)
+        printf("sendall: len != total\n");
+    return n == -1 ? -1 : 0;
+}
+
 int recvfile(FILE *file, int sockfd, int *bytes_recv, int *npackets)
 {
     char buf[BUFLEN];
@@ -128,7 +146,7 @@ int sendfile(FILE *file, int sockfd, int *bytes_sent, int *npackets)
         if (n > 0) {
             xorstr(buf, sizeof buf);
             *bytes_sent += n;
-            n = send(sockfd, buf, sizeof buf, 0);
+            n = sendall(sockfd, buf, sizeof buf);
             (*npackets)++;
         }
     } while (*bytes_sent < size && n >= 0 && !feof(file));
