@@ -188,9 +188,7 @@ int main(int argc, char **argv)
                     fclose(fp);
             } else {
                 char cmdstr[MAXDATASIZE];
-                if (cmd == COMMAND_LS) {
-                    sprintf(cmdstr, "/bin/ls %s", FILEDIR);
-                } else if (cmd == COMMAND_LL) {
+                if (cmd == COMMAND_LS || cmd == COMMAND_LL) {
                     sprintf(cmdstr, "/bin/ls -l %s", FILEDIR);
                 }
                 fp = popen(cmdstr, "r");   

@@ -21,7 +21,7 @@ char *cmdtostr(int cmd)
 {
     switch(cmd) {
         case COMMAND_SEND:  return "send";
-        case COMMAND_GRAB:  return "grab";
+        case COMMAND_GRAB:  return "get";
         case COMMAND_LS:    return "ls";
         case COMMAND_LL:    return "ll";
     }
@@ -189,15 +189,15 @@ int recvtextfile(FILE *fp, int sockfd)
         return 1;
     do {
         memset(buf, 0, sizeof buf);
-        nbytes = recv(sockfd, buf, MAXDATASIZE, 0);
+        nbytes = recvall(sockfd, buf, MAXDATASIZE, NULL);
         if (nbytes == -1) {
             perror("server: recv");
             exit(1);
         }
-        if (strcmp(buf, "") != 0) {
+        //if (strcmp(buf, "") != 0) {
             xorstr(buf, sizeof buf);
             fprintf(fp, "%s", buf);
-        }
+        //}
     } while (strcmp(buf, "") != 0);
     return 0;
 }
@@ -210,10 +210,11 @@ int sendtextfile(FILE *fp, int sockfd)
         return 1;
     while (!feof(fp)) {
         memset(buf, 0, sizeof buf);
-        fgets(buf, MAXDATASIZE, fp);
         if (!feof(fp)) {
+        fgets(buf, MAXDATASIZE, fp);
             xorstr(buf, sizeof buf);
-            status = send(sockfd, buf, MAXDATASIZE, 0);
+            status = sendall(sockfd, buf, MAXDATASIZE, NULL);
+            //printf(buf);
             if (status == -1) {
                 perror("send");
                 return status;

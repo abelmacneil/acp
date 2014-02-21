@@ -40,7 +40,7 @@ int main(int argc, char **argv)
                 fprintf(stderr, "File '%s' does not exist.\n", argv[3]);
                 return 2;
             }
-        } else if (strncmp(argv[2], "grab", MAXDATASIZE) == 0) {
+        } else if (strncmp(argv[2], "get", MAXDATASIZE) == 0) {
             cmd = COMMAND_GRAB;
         } else {
             print_badcmd();
@@ -115,6 +115,7 @@ int main(int argc, char **argv)
     }
     int sum, npackets;
     FILE *fp;
+    time_t t1 = time(NULL);
     if (cmd == COMMAND_SEND) {
         fp = fopen(filename, "rb");
         status = sendfile(fp, sockfd, &sum, &npackets);
@@ -129,6 +130,7 @@ int main(int argc, char **argv)
     if (status != 0) {
         fprintf(stderr, "Error on server: %s\n", serv_errstr(status));
     }
+    printf("Total time: %u\n", time(NULL) - t1);
     print_results(stdout, cmd, filename, sum, npackets, ipstr);
 cleanup:
     close(sockfd);
