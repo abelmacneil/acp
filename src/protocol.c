@@ -81,62 +81,66 @@ size_t filelen(FILE *fp)
     return size;
 }
 
-int sendall(int sockfd, char *data, int len)
+int sendall(int sockfd, char *data, int len, int *npackets)
 {
     int total = 0;
     int bytes_left = len;
     int n;
-
+    if (npackets)
+        npackets = 0;
     while (total < len) {
         n = send(sockfd, data + total, bytes_left, 0);
         if (n == -1)
             break;
         total += n;
         bytes_left -= n;
+        if (npackets)
+            (*npackets)++;
     }
-    if (len != total)
-        printf("sendall: len != total\n");
-    return n == -1 ? -1 : 0;
+    return n == -1 || len != total ? -1 : total;
 }
 
-int recvall(int sockfd, char *data, int len)
+int recvall(int sockfd, char *data, int len, int *npackets)
 {
     int total = 0;
     int bytes_left = len;
     int n;
 
+    if (npackets)
+        npackets = 0;
     while (total < len) {
         n = recv(sockfd, data + total, bytes_left, 0);
         if (n == -1)
             break;
         total += n;
         bytes_left -= n;
+        if (npackets)
+            (*npackets)++;
     }
-    if (len != total)
-        printf("all: len != total\n");
-    return n == -1 ? -1 : total;
+    return n == -1 || len != total ? -1 : total;
 }
 int recvfile(FILE *file, int sockfd, int *bytes_recv, int *npackets)
 {
     char buf[BUFLEN];
     int nbytes = 0;
-    *bytes_recv = 0;
     size_t n = 0, size;
+    uint32_t tmp_int;
+    *bytes_recv = 0;
     *npackets = 0;
     if (file == NULL)
-        return 1;
-    nbytes = recv(sockfd, buf, sizeof buf, 0);
+        return -1;
+    nbytes = recvall(sockfd, (char*)&tmp_int, sizeof tmp_int, 0);
     if (nbytes <= 0)
-        return 1;
-    size = atoi(buf);
-    printf("size: %zu\n", size);
+        return -1;
+    size = ntohl(tmp_int);
+    //printf("size: %zu\n", size);
     do {
         memset(buf, 0, sizeof buf);
         if (*bytes_recv + sizeof buf > size)
             nbytes = size - *bytes_recv;
         else
             nbytes = sizeof buf;
-        n = recvall(sockfd, buf, nbytes);
+        n = recvall(sockfd, buf, nbytes, npackets);
         if (n > 0){
             if (*bytes_recv + n > size)
                 n = size - *bytes_recv;
@@ -144,7 +148,7 @@ int recvfile(FILE *file, int sockfd, int *bytes_recv, int *npackets)
             n = fwrite(buf, 1, n, file);
             *bytes_recv += n;
             (*npackets)++;
-            printf("bytes received %d/%zu : n = %zu\n", *bytes_recv, size, n);
+            //printf("bytes received %d/%zu : n = %zu\n", *bytes_recv, size, n);
         }
     } while (*bytes_recv < size && n >= 0);
     return n < 0 ? n : 0;
@@ -155,21 +159,22 @@ int sendfile(FILE *file, int sockfd, int *bytes_sent, int *npackets)
     int nbytes;
     char buf[BUFLEN];
     size_t n = 0, size = filelen(file);
+    uint32_t tmp_int = htonl(size);
+    if (file == NULL)
+        return -1;
     *npackets = 0;
     *bytes_sent = 0;
-    if (file == NULL)
-        return 1;
-    sprintf(buf, "%zu", size);
-    nbytes = send(sockfd, buf, sizeof buf, 0);
+    //printf("size: %zu\n", size);
+    nbytes = sendall(sockfd, (char*)&tmp_int, sizeof tmp_int, 0);
     if (nbytes <= 0)
-        return 1;
+        return -1;
     do {
         memset(buf, 0, sizeof buf);
         n = fread(buf, 1, sizeof buf, file);
         if (n > 0) {
             xorstr(buf, sizeof buf);
             *bytes_sent += n;
-            n = sendall(sockfd, buf, sizeof buf);
+            n = sendall(sockfd, buf, sizeof buf, npackets);
             (*npackets)++;
         }
     } while (*bytes_sent < size && n >= 0 && !feof(file));

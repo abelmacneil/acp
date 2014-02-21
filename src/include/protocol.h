@@ -14,6 +14,7 @@
 
 #define PORT "4309" // the port client will be connecting to 
 #define MAXDATASIZE 512 // max number of bytes we can get at once 
+#define MINDATASIZE 16
 #define BACKLOG 10
 
 #define COMMAND_INVALID 0
@@ -22,7 +23,7 @@
 #define COMMAND_LS      30
 #define COMMAND_LL      40
 
-#define SERV_ERROR_OK        0
+#define SERV_ERROR_OK       0
 #define SERV_ERROR_NOFILE   1
 
 
@@ -38,6 +39,9 @@ char *get_ip(char *devname);
 
 size_t filelen(FILE *fp);
 
+int recvall(int sockfd, char *data, int len, int *npackets);
+
+int sendall(int sockfd, char *data, int len, int *npackets);
 
 int recvfile(FILE *file, int sockfd, int *bytes_sent, int *npackets);
 

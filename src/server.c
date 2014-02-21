@@ -82,9 +82,8 @@ int main(int argc, char **argv)
     struct sockaddr_storage client_addr;
     socklen_t sin_size;
     struct sigaction sa;
-    char ipstr[INET_ADDRSTRLEN];
     char filename[MAXDATASIZE];
-    int cmd;
+    uint32_t cmd;
     char tmp[MAXDATASIZE];
     char *myip;
     int status, nbytes;
@@ -100,12 +99,14 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    findaddr(servinfo, &sockfd);
+    status = findaddr(servinfo, &sockfd);
     freeaddrinfo(servinfo);
+    if (status != 0)
+        return 1;
 
     if (listen(sockfd, BACKLOG) == -1) {
         perror("server: listen");
-        exit(1);
+        return 1;
     }
 
     sa.sa_handler = sigchld_handler;
@@ -113,7 +114,7 @@ int main(int argc, char **argv)
     sa.sa_flags = SA_RESTART;
     if (sigaction(SIGCHLD, &sa, NULL) == -1) {
         perror("sigaction");
-        exit(1);
+        return 1;
     }
 
     signal(SIGINT, sigint_handler);
@@ -135,25 +136,24 @@ int main(int argc, char **argv)
         genkey();
         inet_ntop(client_addr.ss_family,
                 get_inet_addr((struct sockaddr*)&client_addr),
-                ipstr, sizeof ipstr);                
-
+                tmp, sizeof tmp);                
         if (!fork()) {
             close(sockfd);
             char path[MAXDATASIZE] = FILEDIR;
-            int client_argc;
-            nbytes = recv(newfd, tmp, MAXDATASIZE, 0);
-            client_argc = atoi(tmp);
-            nbytes = recv(newfd, tmp, MAXDATASIZE, 0);
-            cmd = atoi(tmp);
+            char ipstr[MAXDATASIZE];
+            strncpy(ipstr, tmp,MAXDATASIZE);
+            uint32_t tmp_int;
+            nbytes = recvall(newfd, (char*)&tmp_int, sizeof tmp_int, NULL);
+            cmd = ntohl(tmp_int);
             if (nbytes == -1) {
                 perror("server: recv");
-                exit(1);
+                goto cleanup;
             }
             printf("%s ", ipstr);
             printf("request: '%s", cmdtostr(cmd));
             status = SERV_ERROR_OK;
             if (cmd < COMMAND_LS) {
-                nbytes = recv(newfd, filename, MAXDATASIZE, 0);
+                nbytes = recvall(newfd, filename, MAXDATASIZE, NULL);
                 if (nbytes == -1) {
                     perror("recv");
                     goto cleanup;
@@ -167,9 +167,10 @@ int main(int argc, char **argv)
             } else {
                 puts("'");
             }
-            sprintf(tmp, "%d", status);
-            send(newfd, tmp, MAXDATASIZE,0);
-            if (status != 0)
+            //sprintf(tmp, "%d", status);
+            tmp_int = htonl(status);
+            nbytes = sendall(newfd, (char*)&tmp_int, sizeof tmp_int, NULL);
+            if (status != 0 || nbytes == -1)
                 goto cleanup;
             int sum = 0, npackets = 0;
             FILE *fp = NULL;
@@ -190,7 +191,7 @@ int main(int argc, char **argv)
                 if (cmd == COMMAND_LS) {
                     sprintf(cmdstr, "/bin/ls %s", FILEDIR);
                 } else if (cmd == COMMAND_LL) {
-                    sprintf(cmdstr, "/bin/ls -lh %s", FILEDIR);
+                    sprintf(cmdstr, "/bin/ls -l %s", FILEDIR);
                 }
                 fp = popen(cmdstr, "r");   
                 handle_ptr(fp, "popen");
@@ -198,11 +199,15 @@ int main(int argc, char **argv)
                 if (fp)
                     pclose(fp);
             }
+            if (status != 0) {
+                perror("Error on network");
+                goto cleanup;
+            }
             status = log_results(ipstr, cmd, 
                     cmd < COMMAND_LS ? filename : NULL, sum);
             if (status != 0) {
                 perror("Error on network");
-                exit(status);
+                goto cleanup;
             }
             print_results(stdout, cmd, cmd < COMMAND_LS ? filename : NULL,
                     sum, npackets, ipstr);

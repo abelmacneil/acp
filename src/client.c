@@ -17,6 +17,11 @@ void newfunct()
     printf("Stuff.\n");
 }
 
+void print_badcmd()
+{
+    fprintf(stderr, "No such command.\n");
+    exit(1);
+}
 
 int main(int argc, char **argv)
 {
@@ -25,31 +30,32 @@ int main(int argc, char **argv)
     int status, serv_status;
     char ipstr[INET6_ADDRSTRLEN];
     char filename[FILENAME_MAX];
-    char tmp[MAXDATASIZE];
+    //char tmp[MAXDATASIZE];
     int cmd = COMMAND_INVALID;
 
-    if (argc > 2) {
-        if (argc > 3) {
-            if (strncmp(argv[2], "send", MAXDATASIZE) == 0)  {
-                cmd = COMMAND_SEND;
-                if (access(argv[3], F_OK) == -1) {
-                    fprintf(stderr, "File '%s' does not exist.\n", argv[3]);
-                    return 2;
-                }
-            } else if (strncmp(argv[2], "grab", MAXDATASIZE) == 0) {
-                cmd = COMMAND_GRAB;
+    if (argc == 4) {
+        if (strncmp(argv[2], "send", MAXDATASIZE) == 0)  {
+            cmd = COMMAND_SEND;
+            if (access(argv[3], F_OK) == -1) {
+                fprintf(stderr, "File '%s' does not exist.\n", argv[3]);
+                return 2;
             }
-            strncpy(filename ,argv[3], sizeof filename);
-        } else if (strncmp(argv[2], "ls", MAXDATASIZE) == 0) 
+        } else if (strncmp(argv[2], "grab", MAXDATASIZE) == 0) {
+            cmd = COMMAND_GRAB;
+        } else {
+            print_badcmd();
+        }
+        strncpy(filename ,argv[3], sizeof filename);
+    } else if (argc == 3) {
+        if (strncmp(argv[2], "ls", MAXDATASIZE) == 0) 
             cmd = COMMAND_LS;
         else if (strncmp(argv[2], "ll", MAXDATASIZE) == 0) 
             cmd = COMMAND_LL;
-        else {
-            fprintf(stderr, "Invalid command.\n");
-            return 1;
-        }
-    } else
-        return 1;
+        else
+            print_badcmd();
+    } else {
+        print_badcmd();
+    }
 
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
@@ -61,7 +67,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-        
+
     for (p = servinfo; p != NULL; p = p->ai_next)  {
 
         sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
@@ -91,17 +97,18 @@ int main(int argc, char **argv)
     freeaddrinfo(servinfo);
 
     //sprintf(tmp, "%d", argc);
-    status = send(sockfd, &argc, MAXDATASIZE, 0);
-    sprintf(tmp, "%d", cmd);
-    status = send(sockfd, tmp, MAXDATASIZE, 0);
+    uint32_t tmp_int;
+    tmp_int = htonl(cmd);
+    status = sendall(sockfd, (char*)&tmp_int, sizeof tmp_int, NULL);
     if (cmd < COMMAND_LS) 
-        status = send(sockfd, filename, MAXDATASIZE, 0);
+        status = sendall(sockfd, filename, MAXDATASIZE, NULL);
     if (status == -1) {
         perror("send");
         exit(1);
     }
-    recv(sockfd, tmp, MAXDATASIZE, 0);
-    serv_status = atoi(tmp);
+    recvall(sockfd, (char*)&tmp_int, sizeof tmp_int, NULL);
+    serv_status = ntohl(tmp_int);
+    printf("Server status: %d\n", serv_status);
     if (serv_status != 0) {
         fprintf(stderr, "Error on server: %s\n", serv_errstr(serv_status));
         goto cleanup;

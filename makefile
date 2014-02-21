@@ -34,9 +34,6 @@ protocol.o 		: protocol.h protocol.c
 run-server: compile
 	$(SERVERBIN)
 
-run-client: compile
-	$(CLIENTBIN)
-
 clean:
 	rm -r $(BUILDDIR)
 	rm -r $(BINDIR)
