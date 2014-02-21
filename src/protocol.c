@@ -99,7 +99,34 @@ int sendall(int sockfd, char *data, int len, int *npackets)
     }
     return n == -1 || len != total ? -1 : total;
 }
-
+void load_bar(int x, int n, int r, int w)
+{
+    // Only update r times.
+    if ( x % (n/r) != 0 ) return;
+ 
+    // Calculuate the ratio of complete-to-incomplete.
+    float ratio = x/(float)n;
+    int   c     = ratio * w;
+    int i;
+    printf("\033[F\033[J");
+    // Show the percentage complete.
+    printf("%3d%% [", (int)(ratio*100) );
+ 
+    // Show the load bar.
+    for (i=0; i<c; i++)
+       printf("=");
+ 
+    for (i=c; i<w; i++)
+       printf(" ");
+ 
+    // ANSI Control codes to go back to the
+    // previous line and clear it.
+    printf("]"); 
+    if (n > 2 * 1000)
+        printf("(%dKB/%dKB)\n", x / 1000, n / 1000);
+    else
+        printf("(%dB/%dB)\n", x, n);
+}
 int recvall(int sockfd, char *data, int len, int *npackets)
 {
     int total = 0;
@@ -149,8 +176,13 @@ int recvfile(FILE *file, int sockfd, int *bytes_recv, int *npackets)
             *bytes_recv += n;
             (*npackets)++;
             //printf("bytes received %d/%zu : n = %zu\n", *bytes_recv, size, n);
+            if (size > 1000) 
+                load_bar(*bytes_recv, size, size / 1000, 20);
+            else
+                load_bar(*bytes_recv, size, 1, 20);
         }
     } while (*bytes_recv < size && n >= 0);
+    load_bar(*bytes_recv, size, 1, 20);
     return n < 0 ? n : 0;
 }
 
@@ -176,8 +208,14 @@ int sendfile(FILE *file, int sockfd, int *bytes_sent, int *npackets)
             *bytes_sent += n;
             n = sendall(sockfd, buf, sizeof buf, npackets);
             (*npackets)++;
+            if (size > 1000) 
+                load_bar(*bytes_sent, size, size / 1000, 20);
+            else
+                load_bar(*bytes_sent, size, 1, 20);
+
         }
     } while (*bytes_sent < size && n >= 0 && !feof(file));
+    load_bar(*bytes_sent, size, 1, 20);
     return n < 0 ? n : 0;
 }
 

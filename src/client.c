@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <time.h>
 
 #include <arpa/inet.h>
 
@@ -32,7 +33,8 @@ int main(int argc, char **argv)
     char filename[FILENAME_MAX];
     //char tmp[MAXDATASIZE];
     int cmd = COMMAND_INVALID;
-
+    clock_t t1, t2;
+    t1 = clock();
     if (argc == 4) {
         if (strncmp(argv[2], "send", MAXDATASIZE) == 0)  {
             cmd = COMMAND_SEND;
@@ -78,14 +80,14 @@ int main(int argc, char **argv)
 
         if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
             close(sockfd);
-            perror("client connect");
+            perror("client: connect");
             continue;
         } 
         break;
     }
 
     if (p == NULL) {
-        fprintf(stderr, "client: failed to connect\n");
+        fprintf(stderr, "Failed to connect to %s\n", ipstr);
         return 2;
     }
 
@@ -115,7 +117,6 @@ int main(int argc, char **argv)
     }
     int sum, npackets;
     FILE *fp;
-    time_t t1 = time(NULL);
     if (cmd == COMMAND_SEND) {
         fp = fopen(filename, "rb");
         status = sendfile(fp, sockfd, &sum, &npackets);
@@ -130,7 +131,9 @@ int main(int argc, char **argv)
     if (status != 0) {
         fprintf(stderr, "Error on server: %s\n", serv_errstr(status));
     }
-    printf("Total time: %u\n", time(NULL) - t1);
+    t2 = clock();
+    float time_diff = (((float)t2 - (float)t1) / CLOCKS_PER_SEC ) * 1000;    
+    printf("Total time: %f ms\n", time_diff);
     print_results(stdout, cmd, filename, sum, npackets, ipstr);
 cleanup:
     close(sockfd);
