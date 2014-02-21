@@ -201,6 +201,7 @@ int main(int argc, char **argv)
                 perror("Error on network");
                 goto cleanup;
             }
+
             status = log_results(ipstr, cmd, 
                     cmd < COMMAND_LS ? filename : NULL, sum);
             if (status != 0) {
