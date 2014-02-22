@@ -7,8 +7,11 @@
 #include <time.h>
 #include <stdint.h>
 #include <math.h>
+#include <sys/time.h>
 
 #define BUFLEN      MAXDATASIZE
+#define BYTE        1
+#define KILOBYTE    1024 * BYTE
 
 /**
  * @brief given the command number, it generates the corresponding
@@ -80,16 +83,14 @@ size_t filelen(FILE *fp)
     rewind(fp);
     return size;
 }
+int doall(ssize_t (*sockfct) (int, const void *, size_t, int), 
+        int sockfd, char *data, int len, int *npackets) {
 
-int sendall(int sockfd, char *data, int len, int *npackets)
-{
     int total = 0;
     int bytes_left = len;
     int n;
-    if (npackets)
-        npackets = 0;
     while (total < len) {
-        n = send(sockfd, data + total, bytes_left, 0);
+        n = sockfct(sockfd, data + total, bytes_left, 0);
         if (n == -1)
             break;
         total += n;
@@ -99,52 +100,76 @@ int sendall(int sockfd, char *data, int len, int *npackets)
     }
     return n == -1 || len != total ? -1 : total;
 }
-void load_bar(int x, int n, int r, int w)
+int sendall(int sockfd, char *data, int len, int *npackets)
 {
-    // Only update r times.
-    if ( x % (n/r) != 0 ) return;
- 
-    // Calculuate the ratio of complete-to-incomplete.
-    float ratio = x/(float)n;
-    int   c     = ratio * w;
-    int i;
-    printf("\033[F\033[J");
-    // Show the percentage complete.
-    printf("%3d%% [", (int)(ratio*100) );
- 
-    // Show the load bar.
-    for (i=0; i<c; i++)
-       printf("=");
- 
-    for (i=c; i<w; i++)
-       printf(" ");
- 
-    // ANSI Control codes to go back to the
-    // previous line and clear it.
-    printf("]"); 
-    if (n > 2 * 1000)
-        printf("(%dKB/%dKB)\n", x / 1000, n / 1000);
-    else
-        printf("(%dB/%dB)\n", x, n);
+    return doall(&send, sockfd, data, len, npackets);
 }
 int recvall(int sockfd, char *data, int len, int *npackets)
 {
-    int total = 0;
-    int bytes_left = len;
-    int n;
-
-    if (npackets)
-        npackets = 0;
-    while (total < len) {
-        n = recv(sockfd, data + total, bytes_left, 0);
-        if (n == -1)
-            break;
-        total += n;
-        bytes_left -= n;
-        if (npackets)
-            (*npackets)++;
+    return doall((ssize_t (*) (int, const void *, size_t, int))&recv, 
+            sockfd, data, len, npackets);
+}
+static inline void load_bar(int bytes_used, int size, int nreps, int nbars)
+{
+    static int last_bytes = -1;
+    static struct timeval last_time;
+    static uint32_t times_run = 0;
+    static float rate;
+    const int UPDATE_RATE = 10;
+    struct timeval this_time;
+    if ( bytes_used % (size/nreps) != 0 ) return;
+ 
+    float ratio = bytes_used/(float)size;
+    int   c     = ratio * nbars;
+    int i;
+    if (last_bytes == -1)
+        puts("");
+    if (times_run % UPDATE_RATE == 0)
+        gettimeofday(&this_time, NULL);
+    printf("\033[F\033[J");
+    printf("%3d%% [", (int)(ratio*100) );
+ 
+    for (i = 0; i < c; i++)
+       printf("=");
+    for (i = c; i < nbars; i++)
+       printf(" ");
+ 
+    printf("]");
+    char size_unit[3];
+    if (bytes_used > 2 * KILOBYTE) {
+        bytes_used /= KILOBYTE;
+        size /= KILOBYTE;
+        strncpy(size_unit, "KB", sizeof size_unit);
     }
-    return n == -1 || len != total ? -1 : total;
+    else {
+       strncpy(size_unit, "B", sizeof size_unit); 
+    }
+
+    printf("(%d%s/%d%s)", bytes_used , size_unit, size, size_unit);
+    if (times_run % UPDATE_RATE == 0) {
+        double t1 = (this_time.tv_sec) * 1000 + (this_time.tv_usec) / 1000 ;
+        double t2 = (last_time.tv_sec) * 1000 + (last_time.tv_usec) / 1000 ;
+        rate = 1e3*(bytes_used-last_bytes)/(t1-t2);
+        gettimeofday(&last_time, NULL);
+        last_bytes = bytes_used;
+    }
+    printf(" %.1f %s/s", rate, size_unit);
+    puts("");
+    times_run++;
+}
+
+int get_nreps(size_t size)
+{
+    int nreps = -1, i;
+
+    for (i = 10; i <= 10000; i *= 10) {
+        if (size > 2 * i *KILOBYTE) {
+            nreps = (int) (size / ((i/1000.0)*KILOBYTE));
+        }
+    }
+    if (nreps == -1)
+        nreps = 1;
+    return nreps;
 }
 int recvfile(FILE *file, int sockfd, int *bytes_recv, int *npackets)
 {
@@ -152,6 +177,7 @@ int recvfile(FILE *file, int sockfd, int *bytes_recv, int *npackets)
     int nbytes = 0;
     size_t n = 0, size;
     uint32_t tmp_int;
+    int nreps;
     *bytes_recv = 0;
     *npackets = 0;
     if (file == NULL)
@@ -160,7 +186,9 @@ int recvfile(FILE *file, int sockfd, int *bytes_recv, int *npackets)
     if (nbytes <= 0)
         return -1;
     size = ntohl(tmp_int);
+    nreps = get_nreps(size);
     //printf("size: %zu\n", size);
+    load_bar(*bytes_recv, size, 1, 20);
     do {
         memset(buf, 0, sizeof buf);
         if (*bytes_recv + sizeof buf > size)
@@ -174,12 +202,8 @@ int recvfile(FILE *file, int sockfd, int *bytes_recv, int *npackets)
             xorstr(buf, n);
             n = fwrite(buf, 1, n, file);
             *bytes_recv += n;
-            (*npackets)++;
             //printf("bytes received %d/%zu : n = %zu\n", *bytes_recv, size, n);
-            if (size > 1000) 
-                load_bar(*bytes_recv, size, size / 1000, 20);
-            else
-                load_bar(*bytes_recv, size, 1, 20);
+            load_bar(*bytes_recv, size, nreps, 20);
         }
     } while (*bytes_recv < size && n >= 0);
     load_bar(*bytes_recv, size, 1, 20);
@@ -192,6 +216,7 @@ int sendfile(FILE *file, int sockfd, int *bytes_sent, int *npackets)
     char buf[BUFLEN];
     size_t n = 0, size = filelen(file);
     uint32_t tmp_int = htonl(size);
+    int nreps = get_nreps(size);
     if (file == NULL)
         return -1;
     *npackets = 0;
@@ -200,6 +225,7 @@ int sendfile(FILE *file, int sockfd, int *bytes_sent, int *npackets)
     nbytes = sendall(sockfd, (char*)&tmp_int, sizeof tmp_int, 0);
     if (nbytes <= 0)
         return -1;
+    load_bar(*bytes_sent, size, 1, 20);
     do {
         memset(buf, 0, sizeof buf);
         n = fread(buf, 1, sizeof buf, file);
@@ -207,11 +233,7 @@ int sendfile(FILE *file, int sockfd, int *bytes_sent, int *npackets)
             xorstr(buf, sizeof buf);
             *bytes_sent += n;
             n = sendall(sockfd, buf, sizeof buf, npackets);
-            (*npackets)++;
-            if (size > 1000) 
-                load_bar(*bytes_sent, size, size / 1000, 20);
-            else
-                load_bar(*bytes_sent, size, 1, 20);
+            load_bar(*bytes_sent, size, nreps, 20);
 
         }
     } while (*bytes_sent < size && n >= 0 && !feof(file));
