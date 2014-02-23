@@ -35,8 +35,6 @@ int main(int argc, char **argv)
     char serv_filename[FILENAME_MAX];
     char local_filename[FILENAME_MAX];
     int cmd = COMMAND_INVALID;
-    //struct timeval t1, t2;
-    //t1 = clock();
     double t1, t2;
     if (argc == 5) {
         if (strncmp(argv[2], "get", MAXDATASIZE) == 0) {
@@ -58,7 +56,7 @@ int main(int argc, char **argv)
     }
     if (cmd == COMMAND_SEND)
         strncpy(serv_filename ,argv[3], sizeof serv_filename);
-    if (cmd == COMMAND_GRAB) {
+    else if (cmd == COMMAND_GRAB) {
         strncpy(serv_filename, argv[3], sizeof serv_filename);
         struct stat info;
         stat(argv[4], &info);
@@ -71,7 +69,6 @@ int main(int argc, char **argv)
             strncpy(local_filename, argv[4], sizeof local_filename);
         }
     }
-        
 
     if (cmd == COMMAND_INVALID)
         print_badcmd();
@@ -115,7 +112,6 @@ int main(int argc, char **argv)
 
     freeaddrinfo(servinfo);
 
-    //sprintf(tmp, "%d", argc);
     uint32_t tmp_int;
     tmp_int = htonl(cmd);
     status = sendall(sockfd, (char*)&tmp_int, sizeof tmp_int, NULL);
@@ -149,9 +145,7 @@ int main(int argc, char **argv)
     if (status != 0) {
         fprintf(stderr, "Error on server: %s\n", serv_errstr(status));
     }
-    //t2 = clock();
     t2 = get_current_millis();
-    //float time_diff = (((float)t2 - (float)t1) / CLOCKS_PER_SEC ) * 1000;    
     printf("Total transfer time: %.3fs\n", (float) (t2 - t1)/1000);
     print_results(stdout, cmd, serv_filename, sum, npackets, ipstr);
 cleanup:
