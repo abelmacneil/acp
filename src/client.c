@@ -55,7 +55,7 @@ int main(int argc, char **argv)
             cmd = COMMAND_LL;
     }
     if (cmd == COMMAND_SEND)
-        strncpy(local_filename ,argv[3], sizeof local_filename);
+        strncpy(serv_filename ,argv[3], sizeof serv_filename);
     if (cmd == COMMAND_GRAB) {
         strncpy(serv_filename, argv[3], sizeof serv_filename);
         struct stat info;
@@ -133,7 +133,7 @@ int main(int argc, char **argv)
     int sum, npackets;
     FILE *fp;
     if (cmd == COMMAND_SEND) {
-        fp = fopen(local_filename, "rb");
+        fp = fopen(serv_filename, "rb");
         status = sendfile(fp, sockfd, &sum, &npackets);
         fclose(fp);
     } else if (cmd == COMMAND_GRAB) {
