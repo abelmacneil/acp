@@ -11,6 +11,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <time.h>
+#include <sys/time.h>
 
 #include <arpa/inet.h>
 
@@ -34,8 +35,9 @@ int main(int argc, char **argv)
     char serv_filename[FILENAME_MAX];
     char local_filename[FILENAME_MAX];
     int cmd = COMMAND_INVALID;
-    clock_t t1, t2;
-    t1 = clock();
+    //struct timeval t1, t2;
+    //t1 = clock();
+    double t1, t2;
     if (argc == 5) {
         if (strncmp(argv[2], "get", MAXDATASIZE) == 0) {
             cmd = COMMAND_GRAB;
@@ -132,6 +134,7 @@ int main(int argc, char **argv)
     }
     int sum, npackets;
     FILE *fp;
+    t1 = get_current_millis();
     if (cmd == COMMAND_SEND) {
         fp = fopen(serv_filename, "rb");
         status = sendfile(fp, sockfd, &sum, &npackets);
@@ -146,9 +149,10 @@ int main(int argc, char **argv)
     if (status != 0) {
         fprintf(stderr, "Error on server: %s\n", serv_errstr(status));
     }
-    t2 = clock();
-    float time_diff = (((float)t2 - (float)t1) / CLOCKS_PER_SEC ) * 1000;    
-    printf("Total time: %f ms\n", time_diff);
+    //t2 = clock();
+    t2 = get_current_millis();
+    //float time_diff = (((float)t2 - (float)t1) / CLOCKS_PER_SEC ) * 1000;    
+    printf("Total transfer time: %.3fs\n", (float) (t2 - t1)/1000);
     print_results(stdout, cmd, serv_filename, sum, npackets, ipstr);
 cleanup:
     close(sockfd);

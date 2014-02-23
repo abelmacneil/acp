@@ -37,6 +37,8 @@ void *get_inet_addr(struct sockaddr *sa);
 
 char *get_ip(char *devname);
 
+double get_current_millis();
+
 size_t filelen(FILE *fp);
 
 int recvall(int sockfd, char *data, int len, int *npackets);

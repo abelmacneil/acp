@@ -75,6 +75,12 @@ char *get_ip(char *devname)
     return res;
 }
 
+double get_current_millis()
+{
+    struct timeval t;
+    gettimeofday(&t, NULL);
+    return (t.tv_sec) * 1000 + (t.tv_usec) / 1000 ;
+}
 
 size_t filelen(FILE *fp)
 {
@@ -112,11 +118,13 @@ int recvall(int sockfd, char *data, int len, int *npackets)
 static inline void load_bar(int bytes_used, int size, int nreps, int nbars)
 {
     static int last_bytes = -1;
-    static struct timeval last_time;
+    //static struct timeval last_time;
     static uint32_t times_run = 0;
     static float rate;
     const int UPDATE_RATE = 10;
-    struct timeval this_time;
+    //struct timeval this_time;
+    static double t1;
+    static double t2;
     if ( bytes_used % (size/nreps) != 0 ) return;
  
     float ratio = bytes_used/(float)size;
@@ -125,7 +133,8 @@ static inline void load_bar(int bytes_used, int size, int nreps, int nbars)
     if (last_bytes == -1)
         puts("");
     if (times_run % UPDATE_RATE == 0)
-        gettimeofday(&this_time, NULL);
+        t2 = get_current_millis();
+        //gettimeofday(&this_time, NULL);
     printf("\033[F\033[J");
     printf("%3d%% [", (int)(ratio*100) );
  
@@ -147,10 +156,11 @@ static inline void load_bar(int bytes_used, int size, int nreps, int nbars)
 
     printf("(%d%s/%d%s)", bytes_used , size_unit, size, size_unit);
     if (times_run % UPDATE_RATE == 0) {
-        double t1 = (this_time.tv_sec) * 1000 + (this_time.tv_usec) / 1000 ;
-        double t2 = (last_time.tv_sec) * 1000 + (last_time.tv_usec) / 1000 ;
-        rate = 1e3*(bytes_used-last_bytes)/(t1-t2);
-        gettimeofday(&last_time, NULL);
+        //double t1 = (this_time.tv_sec) * 1000 + (this_time.tv_usec) / 1000 ;
+        //double t2 = (last_time.tv_sec) * 1000 + (last_time.tv_usec) / 1000 ;
+        rate = 1e3*(bytes_used-last_bytes)/(t2-t1);
+        //gettimeofday(&last_time, NULL);
+        t1 = get_current_millis();
         last_bytes = bytes_used;
     }
     printf(" %.1f %s/s", rate, size_unit);
