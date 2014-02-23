@@ -68,7 +68,6 @@ int main(int argc, char **argv)
         } else {
             strncpy(local_filename, argv[4], sizeof local_filename);
         }
-        printf("local_filename = %s\n", local_filename);
     }
         
 
