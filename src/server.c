@@ -173,7 +173,7 @@ int main(int argc, char **argv)
             if (status != 0 || nbytes == -1)
                 goto cleanup;
             int sum = 0, npackets = 0;
-            FILE *fp = NULL;
+            FILE *fp;
             if (cmd < COMMAND_LS) {
                 if (cmd == COMMAND_SEND) {
                     fp = fopen(path, "wb");
