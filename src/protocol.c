@@ -7,8 +7,9 @@
 #include <time.h>
 #include <stdint.h>
 #include <math.h>
+#include <limits.h>
 #include <sys/time.h>
-
+#include <sys/stat.h>
 #define BUFLEN      MAXDATASIZE
 #define BYTE        1
 #define KILOBYTE    1024 * BYTE
@@ -24,7 +25,7 @@ char *cmdtostr(int cmd)
 {
     switch(cmd) {
         case COMMAND_SEND:  return "send";
-        case COMMAND_GRAB:  return "get";
+        case COMMAND_GET:  return "get";
         case COMMAND_LS:    return "ls";
         case COMMAND_LL:    return "ll";
     }
@@ -88,6 +89,53 @@ size_t filelen(FILE *fp)
     size_t size = ftell(fp);
     rewind(fp);
     return size;
+}
+
+char *get_last_match(char *str, char m, size_t len)
+{
+    str += len;
+    while (len-- > 0 && *str != m) {
+        //printf("%zu\n", len);
+        str--;
+    }
+    return str;
+}
+
+int get_dir_from_path(char *path, size_t path_size, char *dir)
+{
+    char *m = get_last_match(path, '/', path_size);
+    if (m == path) {
+        dir[0] = '\0';
+        return 1;
+    }
+    int diff = m - path;
+    //printf("diff = %d\n", diff);
+    strncpy(dir, path, diff+1);
+    dir[diff+1] = '\0';
+    //printf("dir = %s\n", dir);
+    return 0;
+}
+
+int handle_new_filename(char *newfilename, char *filename, 
+        char *newpath, size_t size)
+{
+    struct stat info;
+    stat(newpath, &info);
+    if (S_ISDIR(info.st_mode)) {
+        strncpy(newfilename, newpath, size);
+        strncat(newfilename, "/", size);
+        strncat(newfilename, filename, size);
+    } else {
+        char dir[PATH_MAX];
+        if (get_dir_from_path(newpath, strlen(newpath), dir) == 0) {
+            //printf("dir = %s\n", dir);
+            stat(dir, &info);
+            if (!S_ISDIR(info.st_mode))
+                return 1;
+        }
+        strncpy(newfilename, newpath, size);
+    }
+    return 0;
 }
 int doall(ssize_t (*sockfct) (int, const void *, size_t, int), 
         int sockfd, char *data, int len, int *npackets) {

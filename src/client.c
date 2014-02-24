@@ -7,11 +7,11 @@
 #include <string.h>
 #include <netdb.h>
 #include <sys/types.h>
-#include <sys/stat.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <time.h>
 #include <sys/time.h>
+#include <limits.h>
 
 #include <arpa/inet.h>
 
@@ -26,21 +26,39 @@ void print_badcmd()
     exit(1);
 }
 
+void print_help(FILE *fp, char *prog_name)
+{
+    size_t cmd_len = 25;
+    char format[] =  "%-*s => %s\n";
+    fprintf(fp, "Usage: %s HOSTIP COMMAND [ARGS...]\n", prog_name);
+    fprintf(fp, "Commands:\n");
+    fprintf(fp, format, cmd_len, 
+            "send LOCALFILE", 
+            "copies LOCALFILE to the server.\n");
+    fprintf(fp, format, cmd_len, 
+            "get SERVERFILE LOCALFILE", 
+            "copies SERVERFILE from the server to LOCALFILE.\n");
+    fprintf(fp, format, cmd_len, 
+            "ls",
+            "Long listing of files on the server.");
+}
+
+
 int main(int argc, char **argv)
 {
     int sockfd;
     struct addrinfo hints, *servinfo, *p;
     int status, serv_status;
     char ipstr[INET6_ADDRSTRLEN];
-    char serv_filename[FILENAME_MAX];
-    char local_filename[FILENAME_MAX];
+    char serv_filename[PATH_MAX];
+    char local_filename[PATH_MAX];
     int cmd = COMMAND_INVALID;
     double t1, t2;
     if (argc == 5) {
         if (strncmp(argv[2], "get", MAXDATASIZE) == 0) {
-            cmd = COMMAND_GRAB;
+            cmd = COMMAND_GET;
         }
-    } else if (argc == 4) {
+    } if (argc >= 4) {
         if (strncmp(argv[2], "send", MAXDATASIZE) == 0)  {
             cmd = COMMAND_SEND;
             if (access(argv[3], F_OK) == -1) {
@@ -54,24 +72,28 @@ int main(int argc, char **argv)
         else if (strncmp(argv[2], "ll", MAXDATASIZE) == 0) 
             cmd = COMMAND_LL;
     }
-    if (cmd == COMMAND_SEND)
-        strncpy(serv_filename ,argv[3], sizeof serv_filename);
-    else if (cmd == COMMAND_GRAB) {
+    if (cmd == COMMAND_SEND) {
+        strncpy(local_filename ,argv[3], sizeof local_filename);
+        if (argc == 5)
+            strncpy(serv_filename ,argv[4], sizeof serv_filename);
+        else
+            strncpy(serv_filename, local_filename, sizeof local_filename);
+    } else if (cmd == COMMAND_GET) {
         strncpy(serv_filename, argv[3], sizeof serv_filename);
-        struct stat info;
-        stat(argv[4], &info);
-        if (S_ISDIR(info.st_mode)) {
-            char *tmp;
-            strncpy(local_filename, argv[4], sizeof local_filename);
-            strncat(local_filename, "/", sizeof local_filename);
-            strncat(local_filename, serv_filename, sizeof local_filename);
-        } else {
-            strncpy(local_filename, argv[4], sizeof local_filename);
+        if (handle_new_filename(local_filename, argv[3], argv[4],
+                    sizeof local_filename) != 0) {
+            char dir[PATH_MAX];
+
+            get_dir_from_path(argv[4], strlen(argv[4]), dir);
+            fprintf(stderr,"Directory '%s' does not exist.\n", dir);
+            return 2;
         }
     }
 
-    if (cmd == COMMAND_INVALID)
-        print_badcmd();
+    if (cmd == COMMAND_INVALID) {
+        print_help(stdout, argv[0]);
+        return 1;
+    }
 
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
@@ -132,10 +154,10 @@ int main(int argc, char **argv)
     FILE *fp;
     t1 = get_current_millis();
     if (cmd == COMMAND_SEND) {
-        fp = fopen(serv_filename, "rb");
+        fp = fopen(local_filename, "rb");
         status = sendfile(fp, sockfd, &sum, &npackets);
         fclose(fp);
-    } else if (cmd == COMMAND_GRAB) {
+    } else if (cmd == COMMAND_GET) {
         fp = fopen(local_filename, "wb");
         status = recvfile(fp, sockfd, &sum, &npackets);
         fclose(fp);

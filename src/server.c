@@ -160,7 +160,7 @@ int main(int argc, char **argv)
                 }
                 printf(" %s'\n", filename);
                 strncat(path, filename, MAXDATASIZE);
-                if (cmd == COMMAND_GRAB && access(path, F_OK) == -1) {
+                if (cmd == COMMAND_GET && access(path, F_OK) == -1) {
                     fprintf(stderr, "File '%s' does not exist.\n", filename);
                     status = SERV_ERROR_NOFILE;
                 }
@@ -179,7 +179,7 @@ int main(int argc, char **argv)
                     fp = fopen(path, "wb");
                     handle_ptr(fp, "fopen");
                     status = recvfile(fp, newfd, &sum, &npackets);
-                } else if (cmd == COMMAND_GRAB) {
+                } else if (cmd == COMMAND_GET) {
                     fp = fopen(path, "rb");
                     handle_ptr(fp, "fopen");
                     status = sendfile(fp, newfd, &sum, &npackets);

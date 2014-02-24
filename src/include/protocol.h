@@ -19,7 +19,7 @@
 
 #define COMMAND_INVALID 0
 #define COMMAND_SEND    1
-#define COMMAND_GRAB    2
+#define COMMAND_GET    2
 #define COMMAND_LS      30
 #define COMMAND_LL      40
 
@@ -41,6 +41,10 @@ double get_current_millis();
 
 size_t filelen(FILE *fp);
 
+int get_dir_from_path(char *path, size_t path_size, char *dir);
+
+int handle_new_filename(char *newfilename, char *filename, 
+                        char *newpath, size_t size);
 int recvall(int sockfd, char *data, int len, int *npackets);
 
 int sendall(int sockfd, char *data, int len, int *npackets);
