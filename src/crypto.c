@@ -19,7 +19,7 @@ void genkey()
     for (i = 0; i < CIPHERLEN; i++) {
         key[i] = rand();
     }
-    printkey(t);
+    //printkey(t);
 }
 
 void printkey(uint32_t t)

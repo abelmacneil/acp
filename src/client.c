@@ -145,9 +145,10 @@ int main(int argc, char **argv)
     }
     recvall(sockfd, (char*)&tmp_int, sizeof tmp_int, NULL);
     serv_status = ntohl(tmp_int);
-    printf("Server status: %d\n", serv_status);
+    //printf("Server status: %d\n", serv_status);
     if (serv_status != 0) {
         fprintf(stderr, "Error on server: %s\n", serv_errstr(serv_status));
+        status = serv_status;
         goto cleanup;
     }
     int sum, npackets;
