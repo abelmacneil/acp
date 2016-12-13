@@ -116,7 +116,7 @@ int main(int argc, char **argv)
 
         if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
             close(sockfd);
-            perror("client: connect");
+            //perror("client: connect");
             continue;
         } 
         break;
@@ -153,10 +153,13 @@ int main(int argc, char **argv)
     }
     int sum, npackets;
     FILE *fp;
+    sum = 0;
+    npackets = 0;
+    fp = NULL;
     t1 = get_current_millis();
     if (cmd == COMMAND_SEND) {
         fp = fopen(local_filename, "rb");
-        status = sendfile(fp, sockfd, &sum, &npackets);
+        status = send_file(fp, sockfd, &sum, &npackets);
         fclose(fp);
     } else if (cmd == COMMAND_GET) {
         fp = fopen(local_filename, "wb");

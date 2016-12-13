@@ -1,5 +1,5 @@
-#include "protocol.h"
-#include "crypto.h"
+#include "include/protocol.h"
+#include "include/crypto.h"
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
@@ -15,7 +16,8 @@
 #include <signal.h>
 
 #define FILEDIR "server-files/"
-#define LOGFILE "log/msg.log"
+#define LOGDIR "log/"
+#define LOGFILE (LOGDIR"/msg.log")
 
 int log_results(char *ipstr, int cmd, char *filename, int sum);
 void sigchld_handler(int i)
@@ -75,6 +77,15 @@ void print_sep(FILE *fp)
         putc('-', fp);
     putc('\n', fp);
 }
+void make_logdir()
+{
+    struct stat st = {0};
+
+    if (stat(LOGDIR, &st) == -1) {
+        mkdir(LOGDIR, 0700);
+    }
+}
+
 int main(int argc, char **argv)
 {
     int sockfd, newfd;
@@ -88,6 +99,7 @@ int main(int argc, char **argv)
     char *myip;
     int status, nbytes;
 
+    make_logdir();
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
@@ -173,7 +185,7 @@ int main(int argc, char **argv)
             if (status != 0 || nbytes == -1)
                 goto cleanup;
             int sum = 0, npackets = 0;
-            FILE *fp;
+            FILE *fp = NULL;
             if (cmd < COMMAND_LS) {
                 if (cmd == COMMAND_SEND) {
                     fp = fopen(path, "wb");
@@ -182,9 +194,9 @@ int main(int argc, char **argv)
                 } else if (cmd == COMMAND_GET) {
                     fp = fopen(path, "rb");
                     handle_ptr(fp, "fopen");
-                    status = sendfile(fp, newfd, &sum, &npackets);
+                    status = send_file(fp, newfd, &sum, &npackets);
                 } 
-                if (fp)
+                if (fp != NULL)
                     fclose(fp);
             } else {
                 char cmdstr[MAXDATASIZE];

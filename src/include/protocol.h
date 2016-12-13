@@ -51,7 +51,7 @@ int sendall(int sockfd, char *data, int len, int *npackets);
 
 int recvfile(FILE *file, int sockfd, int *bytes_sent, int *npackets);
 
-int sendfile(FILE *file, int sockfd, int *bytes_sent, int *npackets);
+int send_file(FILE *file, int sockfd, int *bytes_sent, int *npackets);
 
 int recvtextfile(FILE *fp, int sockfd);
 

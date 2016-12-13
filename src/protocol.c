@@ -13,6 +13,7 @@
 #define BUFLEN      MAXDATASIZE
 #define BYTE        1
 #define KILOBYTE    1024 * BYTE
+#define BAR_WIDTH   20
 
 /**
  * @brief given the command number, it generates the corresponding
@@ -232,8 +233,8 @@ int get_nreps(size_t size)
 int recvfile(FILE *file, int sockfd, int *bytes_recv, int *npackets)
 {
     char buf[BUFLEN];
-    int nbytes = 0;
-    size_t n = 0, size;
+    int nbytes = 0, n = 0;
+    size_t size;
     uint32_t tmp_int;
     int nreps;
     *bytes_recv = 0;
@@ -246,7 +247,7 @@ int recvfile(FILE *file, int sockfd, int *bytes_recv, int *npackets)
     size = ntohl(tmp_int);
     nreps = get_nreps(size);
     //printf("size: %zu\n", size);
-    load_bar(*bytes_recv, size, 1, 20);
+    load_bar(*bytes_recv, size, 1, BAR_WIDTH);
     do {
         memset(buf, 0, sizeof buf);
         if (*bytes_recv + sizeof buf > size)
@@ -261,18 +262,18 @@ int recvfile(FILE *file, int sockfd, int *bytes_recv, int *npackets)
             n = fwrite(buf, 1, n, file);
             *bytes_recv += n;
             //printf("bytes received %d/%zu : n = %zu\n", *bytes_recv, size, n);
-            load_bar(*bytes_recv, size, nreps, 20);
+            load_bar(*bytes_recv, size, nreps, BAR_WIDTH);
         }
     } while (*bytes_recv < size && n >= 0);
-    load_bar(*bytes_recv, size, 1, 20);
-    return n < 0 ? n : 0;
+    load_bar(*bytes_recv, size, 1, BAR_WIDTH);
+    return 0;
 }
 
-int sendfile(FILE *file, int sockfd, int *bytes_sent, int *npackets)
+int send_file(FILE *file, int sockfd, int *bytes_sent, int *npackets)
 {
-    int nbytes;
+    int nbytes, n = 0;
     char buf[BUFLEN];
-    size_t n = 0, size = filelen(file);
+    size_t size = filelen(file);
     uint32_t tmp_int = htonl(size);
     int nreps = get_nreps(size);
     if (file == NULL)
@@ -283,7 +284,7 @@ int sendfile(FILE *file, int sockfd, int *bytes_sent, int *npackets)
     nbytes = sendall(sockfd, (char*)&tmp_int, sizeof tmp_int, 0);
     if (nbytes <= 0)
         return -1;
-    load_bar(*bytes_sent, size, 1, 20);
+    load_bar(*bytes_sent, size, 1, BAR_WIDTH);
     do {
         memset(buf, 0, sizeof buf);
         n = fread(buf, 1, sizeof buf, file);
@@ -291,12 +292,12 @@ int sendfile(FILE *file, int sockfd, int *bytes_sent, int *npackets)
             xorstr(buf, sizeof buf);
             *bytes_sent += n;
             n = sendall(sockfd, buf, sizeof buf, npackets);
-            load_bar(*bytes_sent, size, nreps, 20);
+            load_bar(*bytes_sent, size, nreps, BAR_WIDTH);
 
         }
     } while (*bytes_sent < size && n >= 0 && !feof(file));
-    load_bar(*bytes_sent, size, 1, 20);
-    return n < 0 ? n : 0;
+    load_bar(*bytes_sent, size, 1, BAR_WIDTH);
+    return 0;
 }
 
 int recvtextfile(FILE *fp, int sockfd)
